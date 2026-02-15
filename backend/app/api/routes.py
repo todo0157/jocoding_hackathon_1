@@ -1,6 +1,16 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
+from urllib.parse import quote
 from app.services.analysis_service import analyze_contract
-from app.models.schemas import ContractAnalysisResponse, HealthResponse
+from app.services.chat_service import generate_chat_response
+from app.services.docx_generator import generate_safe_contract
+from app.models.schemas import (
+    ContractAnalysisResponse,
+    HealthResponse,
+    ChatRequest,
+    ChatResponse,
+    GenerateContractRequest
+)
 
 router = APIRouter()
 
@@ -60,3 +70,68 @@ async def analyze_text_endpoint(text: str):
         "contract_type": contract_type,
         "clauses": results
     }
+
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(request: ChatRequest):
+    """판례 기반 법률 상담 챗봇"""
+    try:
+        # conversation_history를 dict 리스트로 변환
+        history = [
+            {"role": msg.role, "content": msg.content}
+            for msg in request.conversation_history
+        ]
+
+        # contract_context를 dict로 변환
+        context = None
+        if request.contract_context:
+            context = {
+                "contract_type": request.contract_context.contract_type,
+                "high_risk_clauses": request.contract_context.high_risk_clauses,
+                "summary": request.contract_context.summary
+            }
+
+        result = await generate_chat_response(
+            message=request.message,
+            conversation_history=history,
+            contract_context=context
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"챗봇 응답 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/generate-safe-contract")
+async def generate_safe_contract_endpoint(request: GenerateContractRequest):
+    """수정된 안전한 계약서 Word 파일 생성 및 다운로드"""
+    try:
+        # Word 문서 생성
+        docx_buffer = generate_safe_contract(
+            contract_type=request.contract_type,
+            clauses=[clause.model_dump() for clause in request.clauses],
+            apply_alternatives=request.apply_alternatives
+        )
+
+        # 파일명 생성 (한글 URL 인코딩)
+        filename = f"{request.contract_type}_modified.docx"
+        encoded_filename = quote(filename, safe='')
+
+        headers = {
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+
+        return StreamingResponse(
+            docx_buffer,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers=headers
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Contract generation error: {str(e)}"
+        )

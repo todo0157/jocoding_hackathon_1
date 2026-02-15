@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import {
   AlertTriangle,
   CheckCircle,
@@ -9,8 +10,11 @@ import {
   Copy,
   ExternalLink,
   RefreshCw,
-  FileText
+  FileText,
+  MessageCircle,
+  Download
 } from 'lucide-react'
+import { DownloadButton } from './DownloadButton'
 
 interface AnalysisResultProps {
   data: any
@@ -81,6 +85,24 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
           {data.summary}
         </p>
       </div>
+
+      {/* Download Section */}
+      {data.high_risk_clauses > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-lg flex items-center gap-2">
+                <Download className="w-5 h-5 text-primary-600" />
+                안전한 계약서 다운로드
+              </h3>
+              <p className="text-sm text-gray-600 mt-1">
+                위험 조항 {data.high_risk_clauses}개가 수정된 버전을 다운로드하세요
+              </p>
+            </div>
+            <DownloadButton analysisResult={data} />
+          </div>
+        </div>
+      )}
 
       {/* Clauses List */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -197,6 +219,25 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
               </div>
             )
           })}
+        </div>
+      </div>
+
+      {/* Chat CTA */}
+      <div className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-6 text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xl font-bold mb-1">추가 질문이 있으신가요?</h3>
+            <p className="text-primary-100">
+              AI 법률 상담사에게 계약서에 대해 더 자세히 물어보세요
+            </p>
+          </div>
+          <Link
+            href="/chat"
+            className="flex items-center gap-2 px-6 py-3 bg-white text-primary-600 font-semibold rounded-xl hover:bg-primary-50 transition"
+          >
+            <MessageCircle className="w-5 h-5" />
+            상담하기
+          </Link>
         </div>
       </div>
     </div>

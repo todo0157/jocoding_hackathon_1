@@ -41,3 +41,39 @@ class ContractAnalysisResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     version: str
+
+
+# Chat 관련 스키마
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ContractContext(BaseModel):
+    contract_type: Optional[str] = None
+    high_risk_clauses: Optional[list[dict]] = None
+    summary: Optional[str] = None
+
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: list[ChatMessage] = []
+    contract_context: Optional[ContractContext] = None
+
+
+class CitedCase(BaseModel):
+    case_number: str
+    summary: str
+    relevance: str
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    cited_cases: list[CitedCase] = []
+
+
+# 계약서 생성 관련 스키마
+class GenerateContractRequest(BaseModel):
+    contract_type: str
+    clauses: list[AnalyzedClause]
+    apply_alternatives: bool = True

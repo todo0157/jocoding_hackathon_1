@@ -23,6 +23,7 @@
 | FastAPI | 0.122+ | 웹 프레임워크 |
 | OpenAI | 2.21+ | GPT-4o API |
 | PyPDF2 | 3.0.1 | PDF 텍스트 추출 |
+| python-docx | 0.8.11+ | Word 문서 생성 |
 | Pydantic | 2.12+ | 데이터 검증 |
 
 ### Frontend
@@ -51,7 +52,9 @@ ContractPilot/
 │   │   ├── services/
 │   │   │   ├── pdf_service.py     # PDF 처리
 │   │   │   ├── rag_service.py     # 판례 검색 (샘플)
-│   │   │   └── analysis_service.py # 분석 로직
+│   │   │   ├── analysis_service.py # 분석 로직
+│   │   │   ├── chat_service.py    # 챗봇 서비스
+│   │   │   └── docx_generator.py  # Word 문서 생성
 │   │   └── main.py                # FastAPI 앱
 │   ├── requirements.txt
 │   ├── Dockerfile
@@ -60,12 +63,15 @@ ContractPilot/
 │   ├── src/
 │   │   ├── app/
 │   │   │   ├── page.tsx           # 메인 페이지
+│   │   │   ├── chat/page.tsx      # 챗봇 페이지
 │   │   │   ├── layout.tsx
 │   │   │   └── globals.css
 │   │   ├── components/
 │   │   │   ├── FileUpload.tsx     # 드래그앤드롭 업로드
 │   │   │   ├── LoadingState.tsx   # 로딩 애니메이션
-│   │   │   └── AnalysisResult.tsx # 결과 표시
+│   │   │   ├── AnalysisResult.tsx # 결과 표시
+│   │   │   ├── ChatInterface.tsx  # 챗봇 인터페이스
+│   │   │   └── DownloadButton.tsx # 계약서 다운로드 버튼
 │   │   └── lib/
 │   │       └── api.ts             # API 클라이언트
 │   ├── package.json
@@ -107,6 +113,8 @@ npm run dev
 | GET | `/api/v1/health` | 헬스체크 |
 | POST | `/api/v1/analyze` | 계약서 PDF 분석 |
 | POST | `/api/v1/analyze/text` | 텍스트 직접 분석 (테스트용) |
+| POST | `/api/v1/chat` | 판례 기반 법률 상담 챗봇 |
+| POST | `/api/v1/generate-safe-contract` | 수정된 계약서 Word 다운로드 |
 
 ### 분석 응답 스키마
 ```json
@@ -154,6 +162,8 @@ npm run dev
 - [x] 로딩 애니메이션
 - [x] GitHub 연동
 - [x] End-to-End 테스트 완료
+- [x] 판례 기반 법률 상담 챗봇 (MVP)
+- [x] 수정된 계약서 Word 다운로드 기능
 
 ### 현재 상태 ⚠️
 - 판례 데이터: **샘플 5건** (하드코딩)
@@ -214,73 +224,79 @@ npm run dev
 
 ### 🟡 Phase 2: 신규 기능 개발
 
-#### 2.1 수정된 계약서 전체 생성 기능 ⭐ NEW
+#### 2.1 수정된 계약서 전체 생성 기능 ✅ 완료
 ```
-예상 시간: 3~4시간
+완료일: 2026-02-15
+
+구현 내용:
+- POST /api/v1/generate-safe-contract 엔드포인트
+- python-docx로 Word 파일 생성
+- 위험 조항(risk_score >= 7)의 alternative 자동 적용
+- 프론트엔드 다운로드 버튼 추가
+
+구현 파일:
+- backend/app/services/docx_generator.py
+- backend/app/api/routes.py
+- backend/app/models/schemas.py (GenerateContractRequest)
+- frontend/src/components/DownloadButton.tsx
+- frontend/src/components/AnalysisResult.tsx
+- frontend/src/lib/api.ts (downloadSafeContract)
+```
+
+#### 2.2 판례 기반 법률 상담 챗봇 ✅ 완료 (MVP)
+```
+완료일: 2026-02-15
+
+구현 내용:
+- POST /api/v1/chat 엔드포인트
+- GPT-4o 기반 법률 상담
+- 샘플 판례 5건 키워드 매칭 (RAG MVP)
+- 대화 히스토리 관리
+- 계약서 분석 컨텍스트 연동
+
+구현 파일:
+- backend/app/services/chat_service.py
+- backend/app/api/routes.py
+- backend/app/models/schemas.py (ChatRequest, ChatResponse)
+- frontend/src/app/chat/page.tsx
+- frontend/src/components/ChatInterface.tsx
+- frontend/src/lib/api.ts (sendChatMessage)
+
+TODO (향후 개선):
+- Pinecone 벡터 DB 연동으로 실제 RAG 구현
+- 실제 판례 데이터 수집 및 임베딩
+```
+
+#### 2.3 분석 리포트 PDF 생성 기능 ⭐ NEW
+```
+예상 시간: 2~3시간
 우선순위: 중간
 
 기능 설명:
-- 위험 조항이 모두 수정된 "안전한 계약서" 전체 텍스트 생성
-- PDF 또는 Word 파일로 다운로드 가능
-- 원본과 수정본 비교 (diff) 뷰 제공
+- 계약서 분석 결과를 전문적인 PDF 리포트로 생성
+- 요약, 위험 조항, 수정 제안 등 포함
+- 클라이언트/상사에게 공유하기 좋은 형식
 
 구현 방법:
-1. 새 API 엔드포인트: POST /api/v1/generate-safe-contract
-2. 모든 위험 조항의 alternative를 원본에 적용
-3. python-docx로 Word 파일 생성
-4. 프론트엔드에 "수정된 계약서 다운로드" 버튼 추가
+1. 새 API 엔드포인트: POST /api/v1/generate-report
+2. reportlab 또는 weasyprint로 PDF 생성
+3. 프론트엔드에 "분석 리포트 다운로드" 버튼 추가
+
+PDF 리포트 구성:
+- 표지: 계약서 유형, 분석 일시
+- 요약: 전체 위험도, 고위험 조항 수
+- 조항별 분석: 원문, 문제점, 수정 제안
+- 관련 판례 목록
+- 면책 조항
 
 필요한 파일:
-- backend/app/services/contract_generator.py (신규)
+- backend/app/services/pdf_report_generator.py (신규)
 - backend/app/api/routes.py (수정)
-- frontend/src/components/DownloadButton.tsx (신규)
+- frontend/src/components/ReportDownloadButton.tsx (신규)
 
 필요한 패키지:
-- python-docx>=0.8.11
-- reportlab>=4.0.0  # PDF 생성용
-```
-
-#### 2.2 판례 기반 법률 상담 챗봇 ⭐ NEW
-```
-예상 시간: 4~5시간
-우선순위: 중간
-
-기능 설명:
-- 판례를 학습한 AI가 계약 관련 질문에 답변
-- RAG 기반으로 관련 판례 인용하며 설명
-- 채팅 형태의 인터페이스
-
-구현 방법:
-1. 새 API 엔드포인트: POST /api/v1/chat
-2. OpenAI Assistants API 또는 직접 구현
-3. 판례 RAG 파이프라인 연동
-4. 대화 히스토리 관리
-
-API 스키마:
-POST /api/v1/chat
-{
-  "message": "투자계약서에서 청산 조항이 뭔가요?",
-  "conversation_id": "optional-uuid",
-  "context": {
-    "contract_type": "투자계약서",
-    "analyzed_clauses": [...]  # 이전 분석 결과 참조
-  }
-}
-
-Response:
-{
-  "reply": "청산 조항은 회사가 해산할 때 잔여재산을 분배하는 방법을 정하는 조항입니다...",
-  "cited_cases": [
-    {"case_number": "대법원 2019다12345", "relevance": "청산 우선권 관련"}
-  ],
-  "conversation_id": "uuid"
-}
-
-필요한 파일:
-- backend/app/services/chat_service.py (신규)
-- backend/app/api/routes.py (수정)
-- frontend/src/app/chat/page.tsx (신규)
-- frontend/src/components/ChatInterface.tsx (신규)
+- reportlab>=4.0.0
+- 또는 weasyprint>=60.0
 ```
 
 ### 🟢 Phase 3: 배포 & 마무리
@@ -400,4 +416,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
-*Last Updated: 2026-02-15*
+*Last Updated: 2026-02-15 (챗봇 & 계약서 다운로드 기능 추가)*
