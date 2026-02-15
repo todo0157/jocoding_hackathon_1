@@ -1,0 +1,21 @@
+# FastAPI
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# OpenAI
+openai>=1.12.0
+
+# Vector DB (선택사항 - 나중에 설치)
+# pinecone-client>=3.1.0
+
+# PDF Processing
+pypdf2>=3.0.1
+pdf2image>=1.16.3
+pytesseract>=0.3.10
+
+# Utilities
+python-dotenv>=1.0.1
+pydantic>=2.6.0
+pydantic-settings>=2.1.0
+httpx>=0.26.0

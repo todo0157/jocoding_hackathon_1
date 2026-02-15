@@ -1,0 +1,204 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  AlertTriangle,
+  CheckCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  ExternalLink,
+  RefreshCw,
+  FileText
+} from 'lucide-react'
+
+interface AnalysisResultProps {
+  data: any
+  onReset: () => void
+}
+
+export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
+  const [expandedClauses, setExpandedClauses] = useState<number[]>([])
+  const [copiedId, setCopiedId] = useState<number | null>(null)
+
+  const toggleClause = (index: number) => {
+    setExpandedClauses(prev =>
+      prev.includes(index)
+        ? prev.filter(i => i !== index)
+        : [...prev, index]
+    )
+  }
+
+  const copyToClipboard = (text: string, id: number) => {
+    navigator.clipboard.writeText(text)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  const getRiskColor = (level: string) => {
+    switch (level) {
+      case 'low': return 'risk-low'
+      case 'medium': return 'risk-medium'
+      case 'high': return 'risk-high'
+      case 'critical': return 'risk-critical'
+      default: return 'bg-gray-100 text-gray-800'
+    }
+  }
+
+  const getRiskBadge = (score: number) => {
+    if (score >= 8) return { text: '위험', class: 'bg-red-500' }
+    if (score >= 6) return { text: '주의', class: 'bg-orange-500' }
+    if (score >= 4) return { text: '보통', class: 'bg-yellow-500' }
+    return { text: '안전', class: 'bg-green-500' }
+  }
+
+  return (
+    <div className="space-y-6 animate-slide-up">
+      {/* Summary Card */}
+      <div className={`p-6 rounded-2xl border-2 ${getRiskColor(data.overall_risk_level)}`}>
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              {data.overall_risk_level === 'low' ? (
+                <CheckCircle className="w-6 h-6" />
+              ) : (
+                <AlertTriangle className="w-6 h-6" />
+              )}
+              <span className="text-lg font-semibold">분석 완료</span>
+            </div>
+            <h2 className="text-2xl font-bold mb-1">{data.contract_type}</h2>
+            <p className="text-sm opacity-80">
+              총 {data.total_clauses}개 조항 중 {data.high_risk_clauses}개 고위험 발견
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-4xl font-bold">{data.average_risk_score}</div>
+            <div className="text-sm">평균 위험도</div>
+          </div>
+        </div>
+
+        <p className="mt-4 p-4 bg-white/50 rounded-lg text-sm">
+          {data.summary}
+        </p>
+      </div>
+
+      {/* Clauses List */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            조항별 분석 결과
+          </h3>
+          <button
+            onClick={onReset}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition"
+          >
+            <RefreshCw className="w-4 h-4" />
+            새로 분석
+          </button>
+        </div>
+
+        <div className="divide-y">
+          {data.clauses.map((clause: any, index: number) => {
+            const isExpanded = expandedClauses.includes(index)
+            const badge = getRiskBadge(clause.analysis.risk_score)
+            const isHighRisk = clause.analysis.risk_score >= 6
+
+            return (
+              <div
+                key={index}
+                className={`${isHighRisk ? 'bg-red-50/50' : ''}`}
+              >
+                {/* Clause Header */}
+                <button
+                  onClick={() => toggleClause(index)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium text-white ${badge.class}`}>
+                      {badge.text}
+                    </span>
+                    <span className="font-medium">
+                      {clause.title || `조항 ${clause.number}`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-gray-500">
+                      위험도 {clause.analysis.risk_score}/10
+                    </span>
+                    {isExpanded ? (
+                      <ChevronUp className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <ChevronDown className="w-5 h-5 text-gray-400" />
+                    )}
+                  </div>
+                </button>
+
+                {/* Expanded Content */}
+                {isExpanded && (
+                  <div className="px-4 pb-4 space-y-4">
+                    {/* Original Content */}
+                    <div className="p-3 bg-gray-100 rounded-lg text-sm">
+                      <div className="text-xs text-gray-500 mb-1">원문</div>
+                      {clause.content}
+                    </div>
+
+                    {/* Analysis */}
+                    <div className="p-3 bg-blue-50 rounded-lg">
+                      <div className="text-xs text-blue-600 mb-1">분석 결과</div>
+                      <p className="text-sm font-medium">{clause.analysis.summary}</p>
+
+                      {clause.analysis.issues?.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {clause.analysis.issues.map((issue: string, i: number) => (
+                            <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
+                              <span className="text-red-500">•</span>
+                              {issue}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+
+                    {/* Similar Cases */}
+                    {clause.similar_cases?.length > 0 && (
+                      <div className="p-3 bg-purple-50 rounded-lg">
+                        <div className="text-xs text-purple-600 mb-2">관련 판례</div>
+                        {clause.similar_cases.map((caseItem: any, i: number) => (
+                          <div key={i} className="text-sm mb-2 last:mb-0">
+                            <div className="font-medium flex items-center gap-2">
+                              {caseItem.case_number}
+                              <ExternalLink className="w-3 h-3 text-gray-400" />
+                            </div>
+                            <p className="text-gray-600">{caseItem.summary}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Alternative */}
+                    {clause.alternative && (
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-xs text-green-600">수정 제안</div>
+                          <button
+                            onClick={() => copyToClipboard(clause.alternative, index)}
+                            className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800"
+                          >
+                            <Copy className="w-3 h-3" />
+                            {copiedId === index ? '복사됨!' : '복사'}
+                          </button>
+                        </div>
+                        <p className="text-sm">{clause.alternative}</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+}
