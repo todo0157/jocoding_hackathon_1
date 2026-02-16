@@ -74,7 +74,8 @@ ContractPilot/
 │   │   │   ├── AnalysisResult.tsx # 결과 표시
 │   │   │   ├── ChatInterface.tsx  # 챗봇 인터페이스
 │   │   │   ├── DownloadButton.tsx # 계약서 다운로드 버튼
-│   │   │   └── ReportDownloadButton.tsx # PDF 리포트 다운로드 버튼
+│   │   │   ├── ReportDownloadButton.tsx # PDF 리포트 다운로드 버튼
+│   │   │   └── ComparisonView.tsx # 원본/수정본 비교 뷰
 │   │   └── lib/
 │   │       └── api.ts             # API 클라이언트
 │   ├── package.json
@@ -169,6 +170,7 @@ npm run dev
 - [x] 판례 기반 법률 상담 챗봇 (MVP)
 - [x] 수정된 계약서 Word 다운로드 기능
 - [x] 분석 리포트 PDF 다운로드 기능
+- [x] 원본 vs 수정본 비교 뷰 (Side-by-Side)
 
 ### 현재 상태 ⚠️
 - 판례 데이터: **샘플 5건** (하드코딩)
@@ -416,4 +418,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
-*Last Updated: 2026-02-17 (PDF 분석 리포트 기능 추가)*
+*Last Updated: 2026-02-17 (원본/수정본 비교 뷰 기능 추가)*

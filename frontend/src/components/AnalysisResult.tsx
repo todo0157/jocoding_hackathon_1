@@ -12,10 +12,12 @@ import {
   RefreshCw,
   FileText,
   MessageCircle,
-  Download
+  Download,
+  ArrowLeftRight
 } from 'lucide-react'
 import { DownloadButton } from './DownloadButton'
 import { ReportDownloadButton } from './ReportDownloadButton'
+import { ComparisonView } from './ComparisonView'
 
 interface AnalysisResultProps {
   data: any
@@ -25,6 +27,7 @@ interface AnalysisResultProps {
 export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
   const [expandedClauses, setExpandedClauses] = useState<number[]>([])
   const [copiedId, setCopiedId] = useState<number | null>(null)
+  const [showComparison, setShowComparison] = useState(false)
 
   const toggleClause = (index: number) => {
     setExpandedClauses(prev =>
@@ -120,6 +123,30 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
           <ReportDownloadButton analysisResult={data} />
         </div>
       </div>
+
+      {/* Comparison View Section */}
+      {data.high_risk_clauses > 0 && (
+        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold mb-1 flex items-center gap-2">
+                <ArrowLeftRight className="w-6 h-6" />
+                원본 vs 수정본 비교
+              </h3>
+              <p className="text-indigo-100">
+                {data.high_risk_clauses}개 위험 조항의 변경 사항을 한눈에 비교하세요
+              </p>
+            </div>
+            <button
+              onClick={() => setShowComparison(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-white text-indigo-600 font-semibold rounded-xl hover:bg-indigo-50 transition"
+            >
+              <ArrowLeftRight className="w-5 h-5" />
+              비교하기
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Clauses List */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -257,6 +284,14 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
           </Link>
         </div>
       </div>
+
+      {/* Comparison View Modal */}
+      {showComparison && (
+        <ComparisonView
+          data={data}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
     </div>
   )
 }
