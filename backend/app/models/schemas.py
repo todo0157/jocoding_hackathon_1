@@ -77,3 +77,14 @@ class GenerateContractRequest(BaseModel):
     contract_type: str
     clauses: list[AnalyzedClause]
     apply_alternatives: bool = True
+
+
+# PDF 리포트 생성 관련 스키마
+class GenerateReportRequest(BaseModel):
+    contract_type: str
+    clauses: list[AnalyzedClause]
+    summary: str
+    total_clauses: int
+    high_risk_clauses: int
+    average_risk_score: float
+    overall_risk_level: str

@@ -4,12 +4,14 @@ from urllib.parse import quote
 from app.services.analysis_service import analyze_contract
 from app.services.chat_service import generate_chat_response
 from app.services.docx_generator import generate_safe_contract
+from app.services.pdf_report_generator import generate_analysis_report
 from app.models.schemas import (
     ContractAnalysisResponse,
     HealthResponse,
     ChatRequest,
     ChatResponse,
-    GenerateContractRequest
+    GenerateContractRequest,
+    GenerateReportRequest
 )
 
 router = APIRouter()
@@ -134,4 +136,41 @@ async def generate_safe_contract_endpoint(request: GenerateContractRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Contract generation error: {str(e)}"
+        )
+
+
+@router.post("/generate-report")
+async def generate_report_endpoint(request: GenerateReportRequest):
+    """분석 리포트 PDF 파일 생성 및 다운로드"""
+    try:
+        # PDF 리포트 생성
+        pdf_buffer = generate_analysis_report(
+            contract_type=request.contract_type,
+            clauses=[clause.model_dump() for clause in request.clauses],
+            summary=request.summary,
+            total_clauses=request.total_clauses,
+            high_risk_clauses=request.high_risk_clauses,
+            average_risk_score=request.average_risk_score,
+            overall_risk_level=request.overall_risk_level
+        )
+
+        # 파일명 생성 (한글 URL 인코딩)
+        filename = f"{request.contract_type}_분석리포트.pdf"
+        encoded_filename = quote(filename, safe='')
+
+        headers = {
+            "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+        }
+
+        return StreamingResponse(
+            pdf_buffer,
+            media_type="application/pdf",
+            headers=headers
+        )
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Report generation error: {str(e)}"
         )

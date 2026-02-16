@@ -110,3 +110,44 @@ export async function downloadSafeContract(analysisResult: any): Promise<void> {
     throw new Error('네트워크 오류가 발생했습니다.')
   }
 }
+
+/**
+ * 분석 리포트 PDF 다운로드
+ */
+export async function downloadAnalysisReport(analysisResult: any): Promise<void> {
+  try {
+    const response = await api.post(
+      '/api/v1/generate-report',
+      {
+        contract_type: analysisResult.contract_type,
+        clauses: analysisResult.clauses,
+        summary: analysisResult.summary,
+        total_clauses: analysisResult.total_clauses,
+        high_risk_clauses: analysisResult.high_risk_clauses,
+        average_risk_score: analysisResult.average_risk_score,
+        overall_risk_level: analysisResult.overall_risk_level
+      },
+      {
+        responseType: 'blob'
+      }
+    )
+
+    // Blob에서 파일 다운로드 트리거
+    const blob = new Blob([response.data], {
+      type: 'application/pdf'
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${analysisResult.contract_type}_분석리포트.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.detail || '리포트 생성 중 오류가 발생했습니다.')
+    }
+    throw new Error('네트워크 오류가 발생했습니다.')
+  }
+}

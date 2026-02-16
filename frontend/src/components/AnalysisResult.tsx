@@ -15,6 +15,7 @@ import {
   Download
 } from 'lucide-react'
 import { DownloadButton } from './DownloadButton'
+import { ReportDownloadButton } from './ReportDownloadButton'
 
 interface AnalysisResultProps {
   data: any
@@ -103,6 +104,22 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
           </div>
         </div>
       )}
+
+      {/* Report Download Section */}
+      <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-semibold text-lg flex items-center gap-2">
+              <FileText className="w-5 h-5 text-purple-600" />
+              분석 리포트 다운로드
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">
+              전체 분석 결과를 PDF 리포트로 받아보세요
+            </p>
+          </div>
+          <ReportDownloadButton analysisResult={data} />
+        </div>
+      </div>
 
       {/* Clauses List */}
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
