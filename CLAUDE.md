@@ -175,7 +175,7 @@ npm run dev
 ### 현재 상태 ⚠️
 - 판례 데이터: **샘플 5건** (하드코딩)
 - 판례 검색: **키워드 매칭** (벡터 검색 아님)
-- 배포: **로컬 환경만**
+- 배포: **Cloudflare Pages 배포 진행 중** (Frontend)
 
 ---
 
@@ -303,13 +303,16 @@ PDF 리포트 구성:
 
 ### 🟢 Phase 3: 배포 & 마무리
 
-#### 3.1 배포
+#### 3.1 배포 🔄 진행 중
 ```
-예상 시간: 1~2시간
-
-Frontend (Vercel):
-1. vercel.com 연동
-2. 환경변수 설정: NEXT_PUBLIC_API_URL
+Frontend (Cloudflare Pages):
+1. GitHub 연동 완료
+2. 빌드 설정:
+   - Root directory: frontend
+   - Build command: npm run build
+   - Build output directory: out
+3. next.config.js에 output: 'export' 추가 (정적 빌드)
+4. 환경변수 설정: NEXT_PUBLIC_API_URL
 
 Backend (Railway):
 1. railway.app 연동
@@ -418,4 +421,4 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
-*Last Updated: 2026-02-17 (원본/수정본 비교 뷰 기능 추가)*
+*Last Updated: 2026-02-17 (Cloudflare Pages 배포 설정 추가)*
