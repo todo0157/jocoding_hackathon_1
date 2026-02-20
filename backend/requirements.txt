@@ -16,6 +16,7 @@ pytesseract>=0.3.10
 
 # Document Generation
 python-docx>=0.8.11
+reportlab>=4.0.0
 
 # Utilities
 python-dotenv>=1.0.1
