@@ -1,0 +1,44 @@
+{
+  "contract_type": "투자계약서",
+  "clauses": [
+    {
+      "number": 1,
+      "title": "제1조 (목적)",
+      "content": "본 계약은 투자자와 피투자자 간의 투자 조건을 정한다.",
+      "analysis": {
+        "risk_score": 2,
+        "risk_level": "low",
+        "summary": "일반적인 목적 조항",
+        "issues": []
+      },
+      "similar_cases": [],
+      "alternative": null
+    },
+    {
+      "number": 2,
+      "title": "제5조 (해지)",
+      "content": "투자자는 일방적으로 계약을 해지할 수 있다.",
+      "analysis": {
+        "risk_score": 9,
+        "risk_level": "critical",
+        "summary": "일방적 해지권 조항으로 피투자자에게 매우 불리함",
+        "issues": ["일방적 해지권 부여", "피투자자 보호 조항 없음"]
+      },
+      "similar_cases": [
+        {
+          "case_number": "대법원 2019다12345",
+          "summary": "유사 조항이 투자자 측 귀책으로 인정",
+          "court": "대법원",
+          "date": "2019-05-15",
+          "relevant_text": "일방적 해지 조항은 불공정"
+        }
+      ],
+      "alternative": "쌍방 합의 시에만 계약을 해지할 수 있다."
+    }
+  ],
+  "summary": "이 투자계약서에서 1개의 고위험 조항이 발견되었습니다.",
+  "total_clauses": 2,
+  "high_risk_clauses": 1,
+  "average_risk_score": 5.5,
+  "overall_risk_level": "medium"
+}

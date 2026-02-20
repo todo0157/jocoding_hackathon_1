@@ -151,3 +151,65 @@ export async function downloadAnalysisReport(analysisResult: any): Promise<void>
     throw new Error('네트워크 오류가 발생했습니다.')
   }
 }
+
+// 노동상담 관련 타입
+export interface LaborConsultationInfo {
+  category?: string
+  employment_status?: string
+  company_size?: string
+  employment_type?: string
+}
+
+export interface LaborChatResponse {
+  reply: string
+  cited_cases: CitedCase[]
+  needs_expert: boolean
+}
+
+export interface ExpertConnectRequest {
+  name: string
+  phone: string
+  preferred_time: string
+  consultation_summary?: string
+  agree_privacy: boolean
+}
+
+/**
+ * 노동상담 챗봇 메시지 전송
+ */
+export async function sendLaborChatMessage(
+  message: string,
+  conversationHistory: ChatMessage[] = [],
+  consultationInfo?: LaborConsultationInfo
+): Promise<LaborChatResponse> {
+  try {
+    const response = await api.post('/api/v1/labor-chat', {
+      message,
+      conversation_history: conversationHistory,
+      consultation_info: consultationInfo
+    })
+    return response.data
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.detail || '서버 오류가 발생했습니다.')
+    }
+    throw new Error('네트워크 오류가 발생했습니다.')
+  }
+}
+
+/**
+ * 전문 노무사 상담 연결 신청
+ */
+export async function requestExpertConnect(
+  request: ExpertConnectRequest
+): Promise<{ success: boolean; message: string; request_id: string }> {
+  try {
+    const response = await api.post('/api/v1/expert-connect', request)
+    return response.data
+  } catch (error: any) {
+    if (error.response) {
+      throw new Error(error.response.data.detail || '상담 신청 중 오류가 발생했습니다.')
+    }
+    throw new Error('네트워크 오류가 발생했습니다.')
+  }
+}

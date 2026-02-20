@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { FileUpload } from '@/components/FileUpload'
 import { AnalysisResult } from '@/components/AnalysisResult'
 import { LoadingState } from '@/components/LoadingState'
 import { analyzeContract } from '@/lib/api'
-import { FileText, Shield, Scale } from 'lucide-react'
+import { FileText, Shield, Scale, MessageCircle, Briefcase } from 'lucide-react'
+
+const CONTRACT_CONTEXT_KEY = 'contractpilot_analysis_result'
 
 export default function Home() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -20,6 +23,8 @@ export default function Home() {
     try {
       const data = await analyzeContract(file)
       setResult(data)
+      // 분석 결과를 localStorage에 저장 (챗봇에서 사용)
+      localStorage.setItem(CONTRACT_CONTEXT_KEY, JSON.stringify(data))
     } catch (err: any) {
       setError(err.message || '분석 중 오류가 발생했습니다.')
     } finally {
@@ -41,7 +46,22 @@ export default function Home() {
             <Scale className="w-8 h-8 text-primary-600" />
             <h1 className="text-2xl font-bold text-gray-900">ContractPilot</h1>
           </div>
-          <span className="text-sm text-gray-500">AI 계약서 분석 서비스</span>
+          <nav className="flex items-center gap-4">
+            <Link
+              href="/labor"
+              className="flex items-center gap-2 px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition"
+            >
+              <Briefcase className="w-5 h-5" />
+              <span className="font-medium">노동상담</span>
+            </Link>
+            <Link
+              href="/chat"
+              className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-gray-50 rounded-lg transition"
+            >
+              <MessageCircle className="w-5 h-5" />
+              <span className="font-medium">계약상담</span>
+            </Link>
+          </nav>
         </div>
       </header>
 

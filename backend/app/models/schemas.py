@@ -88,3 +88,31 @@ class GenerateReportRequest(BaseModel):
     high_risk_clauses: int
     average_risk_score: float
     overall_risk_level: str
+
+
+# 노동상담 관련 스키마
+class LaborConsultationInfo(BaseModel):
+    category: Optional[str] = None  # 임금체불, 부당해고, 괴롭힘 등
+    employment_status: Optional[str] = None  # 재직중, 퇴사, 해고
+    company_size: Optional[str] = None  # 5인미만, 5인이상
+    employment_type: Optional[str] = None  # 정규직, 계약직, 프리랜서
+
+
+class LaborChatRequest(BaseModel):
+    message: str
+    conversation_history: list[ChatMessage] = []
+    consultation_info: Optional[LaborConsultationInfo] = None
+
+
+class LaborChatResponse(BaseModel):
+    reply: str
+    cited_cases: list[CitedCase] = []
+    needs_expert: bool = False
+
+
+class ExpertConnectRequest(BaseModel):
+    name: str
+    phone: str
+    preferred_time: str  # morning, afternoon, evening, anytime
+    consultation_summary: Optional[str] = None
+    agree_privacy: bool = True

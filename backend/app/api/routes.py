@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 from app.services.analysis_service import analyze_contract
 from app.services.chat_service import generate_chat_response
+from app.services.labor_chat_service import generate_labor_chat_response
 from app.services.docx_generator import generate_safe_contract
 from app.services.pdf_report_generator import generate_analysis_report
 from app.models.schemas import (
@@ -11,7 +12,10 @@ from app.models.schemas import (
     ChatRequest,
     ChatResponse,
     GenerateContractRequest,
-    GenerateReportRequest
+    GenerateReportRequest,
+    LaborChatRequest,
+    LaborChatResponse,
+    ExpertConnectRequest
 )
 
 router = APIRouter()
@@ -173,4 +177,55 @@ async def generate_report_endpoint(request: GenerateReportRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Report generation error: {str(e)}"
+        )
+
+
+@router.post("/labor-chat", response_model=LaborChatResponse)
+async def labor_chat_endpoint(request: LaborChatRequest):
+    """노동상담 AI 챗봇"""
+    try:
+        # conversation_history를 dict 리스트로 변환
+        history = [
+            {"role": msg.role, "content": msg.content}
+            for msg in request.conversation_history
+        ]
+
+        # consultation_info를 dict로 변환
+        consultation = None
+        if request.consultation_info:
+            consultation = {
+                "category": request.consultation_info.category,
+                "employment_status": request.consultation_info.employment_status,
+                "company_size": request.consultation_info.company_size,
+                "employment_type": request.consultation_info.employment_type
+            }
+
+        result = await generate_labor_chat_response(
+            message=request.message,
+            conversation_history=history,
+            consultation_info=consultation
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"노동상담 응답 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/expert-connect")
+async def expert_connect_endpoint(request: ExpertConnectRequest):
+    """전문 노무사 상담 연결 신청"""
+    try:
+        # TODO: 실제 구현 시 DB에 저장하고 알림 발송
+        # 현재는 성공 응답만 반환
+        return {
+            "success": True,
+            "message": "상담 신청이 완료되었습니다. 24시간 내에 전문 노무사가 연락드릴 예정입니다.",
+            "request_id": f"REQ-{request.phone[-4:]}-001"
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"상담 신청 중 오류가 발생했습니다: {str(e)}"
         )
