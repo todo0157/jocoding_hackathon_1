@@ -6,8 +6,16 @@ from typing import Optional
 class Settings(BaseSettings):
     # App
     app_name: str = "ContractPilot"
-    app_env: str = "development"
+    app_env: str = "development"  # development, production
     debug: bool = True
+
+    # CORS 설정
+    cors_origins: str = "https://contractpilot.pages.dev,http://localhost:3000"
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        """환경변수에서 CORS 허용 도메인 목록 반환"""
+        return [origin.strip() for origin in self.cors_origins.split(",")]
 
     # OpenAI
     openai_api_key: str
