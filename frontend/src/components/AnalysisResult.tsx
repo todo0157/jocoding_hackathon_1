@@ -13,11 +13,14 @@ import {
   FileText,
   MessageCircle,
   Download,
-  ArrowLeftRight
+  ArrowLeftRight,
+  Info
 } from 'lucide-react'
 import { DownloadButton } from './DownloadButton'
 import { ReportDownloadButton } from './ReportDownloadButton'
 import { ComparisonView } from './ComparisonView'
+import { CollaborationPanel } from './CollaborationPanel'
+import { LegalReference } from './LegalReference'
 
 interface AnalysisResultProps {
   data: any
@@ -28,6 +31,7 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
   const [expandedClauses, setExpandedClauses] = useState<number[]>([])
   const [copiedId, setCopiedId] = useState<number | null>(null)
   const [showComparison, setShowComparison] = useState(false)
+  const [shareId, setShareId] = useState<string | null>(null)
 
   const toggleClause = (index: number) => {
     setExpandedClauses(prev =>
@@ -90,6 +94,21 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
         </p>
       </div>
 
+      {/* Disclaimer Section */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <Info className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div className="text-sm text-amber-800">
+            <p className="font-semibold mb-1">AI 분석 도구 안내</p>
+            <p>
+              본 분석 결과는 AI 기반 정보 제공 도구로서 <strong>법률 자문이 아닙니다</strong>.
+              최종 의사결정은 반드시 법률 전문가와 상담 후 진행하시기 바랍니다.
+              ContractPilot은 분석 결과의 정확성이나 완전성을 보장하지 않습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Download Section */}
       {data.high_risk_clauses > 0 && (
         <div className="bg-white rounded-2xl shadow-sm p-6">
@@ -123,6 +142,14 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
           <ReportDownloadButton analysisResult={data} />
         </div>
       </div>
+
+      {/* Legal Reference Section */}
+      <LegalReference
+        relevantLaws={data.clauses?.flatMap((c: any) => c.relevant_laws || []).slice(0, 5)}
+        missingClauses={data.missing_clauses}
+        checklist={data.checklist}
+        contractType={data.contract_type}
+      />
 
       {/* Comparison View Section */}
       {data.high_risk_clauses > 0 && (
@@ -292,6 +319,13 @@ export function AnalysisResult({ data, onReset }: AnalysisResultProps) {
           onClose={() => setShowComparison(false)}
         />
       )}
+
+      {/* Collaboration Panel */}
+      <CollaborationPanel
+        shareId={shareId || undefined}
+        analysisData={data}
+        onShare={(shareData) => setShareId(shareData.share_id)}
+      />
     </div>
   )
 }

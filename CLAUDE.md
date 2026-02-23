@@ -23,6 +23,15 @@
 - 한국 판례 기반 법적 근거 제시
 - 노동상담 → 전문 노무사 연결 수수료 수익 모델
 
+### 🆕 한국 시장 진입 대응 (v0.2.0)
+- **HWP/HWPX 파일 지원**: 한글 문서 형식 완벽 지원
+- **개인정보 익명화**: 이름, 전화번호, 주민번호 등 자동 마스킹
+- **멀티 LLM 지원**: OpenAI, Upstage Solar, Anthropic Claude, 로컬 LLM
+- **한국 법률 API 연동**: 국가법령정보센터, 대법원 판례 검색
+- **계약서 유형별 체크리스트**: 6종 계약서별 필수 조항 검증
+- **협업 기능**: 공유, 댓글, 버전 관리
+- **법적 면책조항**: 변호사법 준수를 위한 명확한 고지
+
 ---
 
 ## 기술 스택
@@ -33,7 +42,9 @@
 | Python | 3.13 | 런타임 |
 | FastAPI | 0.122+ | 웹 프레임워크 |
 | OpenAI | 2.21+ | GPT-4o API |
+| Anthropic | 0.18+ | Claude API |
 | PyPDF2 | 3.0.1 | PDF 텍스트 추출 |
+| olefile | 0.47+ | HWP 파일 파싱 |
 | python-docx | 0.8.11+ | Word 문서 생성 |
 | reportlab | 4.0+ | PDF 리포트 생성 |
 | Pydantic | 2.12+ | 데이터 검증 |
@@ -58,22 +69,28 @@ ContractPilot/
 │   │   │   └── routes.py          # API 엔드포인트
 │   │   ├── core/
 │   │   │   ├── config.py          # 환경 설정
-│   │   │   └── openai_client.py   # OpenAI 연동
+│   │   │   ├── openai_client.py   # OpenAI 연동
+│   │   │   └── llm_client.py      # 🆕 멀티 LLM 클라이언트
 │   │   ├── models/
 │   │   │   └── schemas.py         # Pydantic 스키마
 │   │   ├── services/
 │   │   │   ├── pdf_service.py     # PDF 처리
+│   │   │   ├── hwp_service.py     # 🆕 HWP/HWPX 처리
+│   │   │   ├── document_service.py # 🆕 통합 문서 처리
+│   │   │   ├── anonymizer_service.py # 🆕 개인정보 익명화
 │   │   │   ├── rag_service.py     # 판례 검색 (샘플)
+│   │   │   ├── korean_law_service.py # 🆕 한국 법률 API
+│   │   │   ├── collaboration_service.py # 🆕 협업 기능
 │   │   │   ├── analysis_service.py # 분석 로직
 │   │   │   ├── chat_service.py    # 계약 챗봇 서비스
-│   │   │   ├── labor_chat_service.py  # 🆕 노동상담 챗봇 서비스
+│   │   │   ├── labor_chat_service.py  # 노동상담 챗봇 서비스
 │   │   │   ├── docx_generator.py  # Word 문서 생성
 │   │   │   └── pdf_report_generator.py  # PDF 리포트 생성
 │   │   └── main.py                # FastAPI 앱
-│   ├── start.py                   # 🆕 Railway 배포용 시작 스크립트
+│   ├── start.py                   # Railway 배포용 시작 스크립트
 │   ├── requirements.txt
-│   ├── railway.json               # 🆕 Railway 설정
-│   ├── Procfile                   # 🆕 Railway Procfile
+│   ├── railway.json               # Railway 설정
+│   ├── Procfile                   # Railway Procfile
 │   ├── Dockerfile
 │   └── .env                       # API 키 (gitignore)
 ├── frontend/
@@ -81,7 +98,7 @@ ContractPilot/
 │   │   ├── app/
 │   │   │   ├── page.tsx           # 메인 페이지
 │   │   │   ├── chat/page.tsx      # 계약 챗봇 페이지
-│   │   │   ├── labor/page.tsx     # 🆕 노동상담 페이지
+│   │   │   ├── labor/page.tsx     # 노동상담 페이지
 │   │   │   ├── layout.tsx
 │   │   │   └── globals.css
 │   │   ├── components/
@@ -89,15 +106,21 @@ ContractPilot/
 │   │   │   ├── LoadingState.tsx   # 로딩 애니메이션
 │   │   │   ├── AnalysisResult.tsx # 결과 표시
 │   │   │   ├── ChatInterface.tsx  # 계약 챗봇 인터페이스
-│   │   │   ├── LaborChatInterface.tsx  # 🆕 노동상담 챗봇
-│   │   │   ├── ExpertConnectModal.tsx  # 🆕 노무사 연결 모달
+│   │   │   ├── LaborChatInterface.tsx  # 노동상담 챗봇
+│   │   │   ├── ExpertConnectModal.tsx  # 노무사 연결 모달
 │   │   │   ├── DownloadButton.tsx # 계약서 다운로드 버튼
 │   │   │   ├── ReportDownloadButton.tsx # PDF 리포트 다운로드 버튼
-│   │   │   └── ComparisonView.tsx # 원본/수정본 비교 뷰
+│   │   │   ├── ComparisonView.tsx # 원본/수정본 비교 뷰
+│   │   │   ├── CollaborationPanel.tsx # 🆕 협업 패널
+│   │   │   └── LegalReference.tsx # 🆕 법률 참조 컴포넌트
 │   │   └── lib/
 │   │       └── api.ts             # API 클라이언트
 │   ├── package.json
 │   └── tailwind.config.ts
+├── docs/                          # 🆕 문서
+│   ├── 보완 자료.md
+│   ├── 보완작업_구현목록.md
+│   └── 한국시장_진입_타당성_반박자료.md
 ├── data/                          # 샘플 데이터
 ├── docker-compose.yml
 ├── README.md
@@ -134,7 +157,7 @@ npm run dev
 |--------|------|------|
 | GET | `/` | 서버 정보 |
 | GET | `/api/v1/health` | 헬스체크 |
-| POST | `/api/v1/analyze` | 계약서 PDF 분석 |
+| POST | `/api/v1/analyze` | 계약서 분석 (PDF, HWP, HWPX 지원) |
 | POST | `/api/v1/analyze/text` | 텍스트 직접 분석 (테스트용) |
 | POST | `/api/v1/chat` | 판례 기반 법률 상담 챗봇 |
 | POST | `/api/v1/generate-safe-contract` | 수정된 계약서 Word 다운로드 |
@@ -145,6 +168,32 @@ npm run dev
 |--------|------|------|
 | POST | `/api/v1/labor-chat` | AI 노동상담 챗봇 |
 | POST | `/api/v1/expert-connect` | 전문 노무사 상담 연결 신청 |
+
+### 🆕 시스템 (v0.2.0)
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/v1/system/llm-info` | 현재 LLM 프로바이더 정보 |
+| POST | `/api/v1/system/test-anonymization` | 익명화 테스트 |
+
+### 🆕 한국 법률 API (v0.2.0)
+| Method | Path | 설명 |
+|--------|------|------|
+| GET | `/api/v1/law/search` | 법령 검색 |
+| GET | `/api/v1/law/article/{law_id}` | 특정 조문 조회 |
+| GET | `/api/v1/law/cases` | 판례 검색 |
+| GET | `/api/v1/law/checklist/{contract_type}` | 계약서 체크리스트 |
+
+### 🆕 협업 기능 (v0.2.0)
+| Method | Path | 설명 |
+|--------|------|------|
+| POST | `/api/v1/collaboration/share` | 분석 결과 공유 링크 생성 |
+| GET | `/api/v1/collaboration/share/{share_id}` | 공유된 분석 조회 |
+| POST | `/api/v1/collaboration/comment` | 댓글 추가 |
+| GET | `/api/v1/collaboration/comments/{analysis_id}` | 댓글 목록 조회 |
+| DELETE | `/api/v1/collaboration/comment/{comment_id}` | 댓글 삭제 |
+| POST | `/api/v1/collaboration/version` | 버전 저장 |
+| GET | `/api/v1/collaboration/versions/{analysis_id}` | 버전 목록 조회 |
+| PUT | `/api/v1/collaboration/permissions/{share_id}` | 권한 수정 |
 
 ### 분석 응답 스키마
 ```json
@@ -196,16 +245,28 @@ npm run dev
 - [x] 수정된 계약서 Word 다운로드 기능
 - [x] 분석 리포트 PDF 다운로드 기능
 - [x] 원본 vs 수정본 비교 뷰 (Side-by-Side)
-- [x] 🆕 노동상담 AI 챗봇 (노동톡)
-- [x] 🆕 전문 노무사 연결 신청 기능
-- [x] 🆕 Railway 백엔드 배포 완료
-- [x] 🆕 Cloudflare Pages 프론트엔드 배포 완료
+- [x] 노동상담 AI 챗봇 (노동톡)
+- [x] 전문 노무사 연결 신청 기능
+- [x] Railway 백엔드 배포 완료
+- [x] Cloudflare Pages 프론트엔드 배포 완료
 
-### 현재 상태 ✅ 배포 완료
+### 🆕 v0.2.0 한국 시장 진입 대응 ✅
+- [x] HWP/HWPX 파일 지원 (olefile 기반)
+- [x] 법적 면책조항 UI 표시
+- [x] 개인정보 익명화 서비스 (이름, 전화번호, 주민번호, 계좌번호 등)
+- [x] 멀티 LLM 프로바이더 (OpenAI, Upstage Solar, Anthropic Claude, 로컬 Ollama)
+- [x] 한국 법률 API 연동 (국가법령정보센터, 대법원 판례)
+- [x] 계약서 유형별 체크리스트 (6종: 근로계약서, 임대차계약서, 투자계약서, 용역계약서, 매매계약서, NDA)
+- [x] 협업 기능 (공유 링크, 댓글, 버전 관리, 권한 설정)
+- [x] 프론트엔드 개인정보 보호 배지 추가
+
+### 현재 상태 ✅ v0.2.0 배포 준비
 - **Frontend**: https://contractpilot.pages.dev (Cloudflare Pages)
 - **Backend**: https://contractpilot-production.up.railway.app (Railway)
 - 판례 데이터: **샘플 5건** (하드코딩)
 - 판례 검색: **키워드 매칭** (벡터 검색 아님)
+- 지원 파일: **PDF, HWP, HWPX**
+- LLM: **멀티 프로바이더 지원**
 
 ---
 
@@ -427,8 +488,33 @@ Backend (Railway):
 
 ### backend/.env
 ```env
+# OpenAI (기본)
 OPENAI_API_KEY=sk-...
-PINECONE_API_KEY=...  # TODO: 추가 필요
+
+# 🆕 LLM 프로바이더 설정 (openai, upstage, anthropic, local)
+LLM_PROVIDER=openai
+
+# Upstage Solar API (선택)
+UPSTAGE_API_KEY=up-...
+UPSTAGE_MODEL=solar-pro
+
+# Anthropic Claude API (선택)
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+
+# 로컬 LLM (선택)
+LOCAL_LLM_URL=http://localhost:11434/v1
+LOCAL_LLM_MODEL=llama3.2
+
+# 🆕 개인정보 익명화 설정
+ANONYMIZE_ENABLED=true
+ANONYMIZE_BEFORE_LLM=true
+
+# 한국 법률 API (선택)
+LAW_API_KEY=...
+
+# Pinecone (TODO)
+PINECONE_API_KEY=...
 PINECONE_INDEX_NAME=contract-pilot
 ```
 
@@ -520,4 +606,25 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 
 ---
 
-*Last Updated: 2026-02-20 (노동톡 기능 추가 & Railway/Cloudflare 배포 완료)*
+---
+
+## 🎯 목표 사용자층
+
+### 10~20대 청년층 타겟팅
+
+| 세그먼트 | 주요 니즈 | 계약서 유형 |
+|----------|----------|-------------|
+| **첫 취업 준비생** | 근로계약서 검토, 불공정 조항 파악 | 근로계약서, 연봉계약서 |
+| **자취/독립 청년** | 보증금 보호, 전세사기 예방 | 임대차계약서, 전대차계약서 |
+| **프리랜서/크리에이터** | 정당한 대가, 저작권 보호 | 용역계약서, 저작권양도계약 |
+| **청년 창업자** | 투자 조건 이해, 지분 보호 | 투자계약서, 주주간계약서, NDA |
+
+### 차별화 전략
+- **친근한 UX**: 법률 용어 → 쉬운 말 변환
+- **모바일 최적화**: 카카오톡 봇, 앱 연동
+- **무료 기본 서비스**: 진입 장벽 최소화
+- **또래 커뮤니티**: 계약 경험 공유, 주의사항 공유
+
+---
+
+*Last Updated: 2026-02-23 (v0.2.0 한국 시장 진입 대응 - HWP 지원, 익명화, 멀티 LLM, 법률 API, 협업 기능)*

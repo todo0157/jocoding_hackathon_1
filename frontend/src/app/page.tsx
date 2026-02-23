@@ -6,7 +6,7 @@ import { FileUpload } from '@/components/FileUpload'
 import { AnalysisResult } from '@/components/AnalysisResult'
 import { LoadingState } from '@/components/LoadingState'
 import { analyzeContract } from '@/lib/api'
-import { FileText, Shield, Scale, MessageCircle, Briefcase } from 'lucide-react'
+import { FileText, Shield, Scale, MessageCircle, Briefcase, Lock } from 'lucide-react'
 
 const CONTRACT_CONTEXT_KEY = 'contractpilot_analysis_result'
 
@@ -78,7 +78,7 @@ export default function Home() {
               </p>
 
               {/* Features */}
-              <div className="grid md:grid-cols-3 gap-6 mb-12">
+              <div className="grid md:grid-cols-4 gap-6 mb-12">
                 <div className="bg-white p-6 rounded-xl shadow-sm">
                   <FileText className="w-10 h-10 text-primary-600 mx-auto mb-4" />
                   <h3 className="font-semibold text-lg mb-2">조항별 분석</h3>
@@ -100,11 +100,26 @@ export default function Home() {
                     위험한 조항에 대해 공정한 수정안을 자동 생성합니다
                   </p>
                 </div>
+                <div className="bg-white p-6 rounded-xl shadow-sm border-2 border-green-200">
+                  <Lock className="w-10 h-10 text-green-600 mx-auto mb-4" />
+                  <h3 className="font-semibold text-lg mb-2">개인정보 보호</h3>
+                  <p className="text-gray-600 text-sm">
+                    개인정보 자동 익명화로 안전하게 분석합니다
+                  </p>
+                </div>
               </div>
             </section>
 
             {/* Upload Section */}
             <FileUpload onUpload={handleFileUpload} />
+
+            {/* Privacy Notice */}
+            <div className="mt-4 flex items-center justify-center gap-2 text-sm text-gray-500">
+              <Lock className="w-4 h-4 text-green-600" />
+              <span>
+                업로드된 문서의 개인정보(이름, 연락처, 주소 등)는 자동 익명화 처리됩니다
+              </span>
+            </div>
 
             {error && (
               <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-center">
@@ -122,10 +137,29 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="bg-white border-t mt-12">
-        <div className="max-w-7xl mx-auto px-4 py-6 text-center text-gray-500 text-sm">
-          <p>ContractPilot - 조코딩 x OpenAI x 프라이머 해커톤</p>
-          <p className="mt-1">본 서비스는 법률 자문을 대체하지 않습니다.</p>
+      <footer className="bg-gray-900 text-white mt-12">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h4 className="font-semibold text-lg mb-3">ContractPilot</h4>
+              <p className="text-gray-400 text-sm">
+                AI 기반 계약서 분석 도구로, 계약 검토 시간을 단축하고
+                위험 요소를 사전에 파악할 수 있도록 도와드립니다.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-lg mb-3">면책 조항</h4>
+              <p className="text-gray-400 text-sm">
+                본 서비스는 AI 기반 <strong className="text-amber-400">정보 제공 도구</strong>로서 법률 자문이 아닙니다.
+                ContractPilot의 분석 결과는 참고용이며, 최종 의사결정은 반드시
+                변호사 등 법률 전문가와 상담 후 진행하시기 바랍니다.
+                서비스 이용으로 인한 결과에 대해 ContractPilot은 법적 책임을 지지 않습니다.
+              </p>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-6 pt-6 text-center text-gray-500 text-sm">
+            <p>조코딩 x OpenAI x 프라이머 해커톤 | PDF, HWP, HWPX 지원</p>
+          </div>
         </div>
       </footer>
     </main>

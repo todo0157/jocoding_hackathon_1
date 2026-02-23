@@ -18,7 +18,10 @@ export function FileUpload({ onUpload }: FileUploadProps) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'application/haansofthwp': ['.hwp'],
+      'application/hwp+zip': ['.hwpx'],
+      'application/x-hwp': ['.hwp'],
     },
     maxFiles: 1,
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -51,10 +54,10 @@ export function FileUpload({ onUpload }: FileUploadProps) {
             <Upload className="w-16 h-16 text-gray-400" />
             <div>
               <p className="text-xl font-medium text-gray-700">
-                계약서 PDF를 드래그하거나 클릭하여 업로드
+                계약서를 드래그하거나 클릭하여 업로드
               </p>
               <p className="text-gray-500 mt-2">
-                PDF 파일만 지원 (최대 10MB)
+                PDF, HWP, HWPX 파일 지원 (최대 10MB)
               </p>
             </div>
           </>

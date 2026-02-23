@@ -2,6 +2,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import StreamingResponse
 from urllib.parse import quote
 from app.services.analysis_service import analyze_contract
+from app.services.document_service import validate_file, get_supported_formats_message
 from app.services.chat_service import generate_chat_response
 from app.services.labor_chat_service import generate_labor_chat_response
 from app.services.docx_generator import generate_safe_contract
@@ -15,7 +16,17 @@ from app.models.schemas import (
     GenerateReportRequest,
     LaborChatRequest,
     LaborChatResponse,
-    ExpertConnectRequest
+    ExpertConnectRequest,
+    CreateShareRequest,
+    AddCollaboratorRequest,
+    AddCommentRequest,
+    ResolveCommentRequest,
+    CreateVersionRequest,
+    ShareLinkRequest,
+    UpdatePermissionRequest,
+    RemoveCollaboratorRequest,
+    LawSearchRequest,
+    ChecklistRequest,
 )
 
 router = APIRouter()
@@ -24,30 +35,60 @@ router = APIRouter()
 @router.get("/health", response_model=HealthResponse)
 async def health_check():
     """서버 상태 확인"""
-    return {"status": "healthy", "version": "0.1.0"}
+    return {"status": "healthy", "version": "0.2.0"}
+
+
+@router.get("/system/llm-info")
+async def get_llm_info():
+    """현재 LLM 제공자 정보 조회"""
+    from app.core.openai_client import get_current_provider_info
+    from app.services.document_service import get_supported_formats_message
+
+    info = get_current_provider_info()
+    info["supported_formats"] = get_supported_formats_message()
+    return info
+
+
+@router.post("/system/test-anonymization")
+async def test_anonymization(text: str):
+    """개인정보 익명화 테스트 (개발용)"""
+    from app.services.anonymizer_service import anonymize_text, get_anonymization_stats
+
+    anonymized, mapping = anonymize_text(text, preserve_amounts=True)
+    stats = get_anonymization_stats(text)
+
+    return {
+        "original_length": len(text),
+        "anonymized_length": len(anonymized),
+        "anonymized_text": anonymized,
+        "stats": stats,
+        "mapping_count": len(mapping)
+    }
 
 
 @router.post("/analyze", response_model=ContractAnalysisResponse)
 async def analyze_contract_endpoint(file: UploadFile = File(...)):
-    """계약서 분석 API"""
-    # 파일 유효성 검사
-    if not file.filename.endswith(".pdf"):
-        raise HTTPException(
-            status_code=400,
-            detail="PDF 파일만 지원됩니다."
-        )
-
-    # 파일 크기 제한 (10MB)
+    """계약서 분석 API (PDF, HWP, HWPX 지원)"""
+    # 파일 내용 읽기
     contents = await file.read()
-    if len(contents) > 10 * 1024 * 1024:
+
+    # 파일 유효성 검사 (확장자 + 크기)
+    is_valid, error_message = validate_file(file.filename, len(contents))
+    if not is_valid:
         raise HTTPException(
             status_code=400,
-            detail="파일 크기가 10MB를 초과합니다."
+            detail=error_message
         )
 
     try:
-        result = await analyze_contract(contents)
+        result = await analyze_contract(contents, file.filename)
         return result
+    except ValueError as e:
+        # HWP 파싱 오류 등
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -229,3 +270,313 @@ async def expert_connect_endpoint(request: ExpertConnectRequest):
             status_code=500,
             detail=f"상담 신청 중 오류가 발생했습니다: {str(e)}"
         )
+
+
+# ==========================================
+# 법령 API
+# ==========================================
+
+@router.post("/law/search")
+async def search_laws(request: LawSearchRequest):
+    """관련 법령 검색"""
+    from app.services.korean_law_service import get_relevant_laws
+
+    try:
+        laws = await get_relevant_laws(request.clause_text, request.contract_type)
+        return {"laws": laws, "count": len(laws)}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"법령 검색 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.post("/law/cases")
+async def search_cases(request: LawSearchRequest):
+    """관련 판례 검색"""
+    from app.services.korean_law_service import search_court_cases
+
+    try:
+        cases = await search_court_cases(request.clause_text)
+        return {
+            "cases": [
+                {
+                    "case_number": c.case_number,
+                    "case_name": c.case_name,
+                    "court": c.court,
+                    "decision_date": c.decision_date,
+                    "summary": c.summary,
+                    "relevance_score": c.relevance_score
+                }
+                for c in cases
+            ],
+            "count": len(cases)
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"판례 검색 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/law/checklist/{contract_type}")
+async def get_checklist(contract_type: str):
+    """계약 유형별 필수 조항 체크리스트"""
+    from app.services.korean_law_service import get_contract_checklist
+
+    checklist = get_contract_checklist(contract_type)
+    return {
+        "contract_type": contract_type,
+        "checklist": checklist,
+        "total_items": len(checklist),
+        "required_items": len([c for c in checklist if c.get("required")])
+    }
+
+
+@router.post("/law/check-missing")
+async def check_missing_clauses(request: ChecklistRequest):
+    """누락된 필수 조항 체크"""
+    from app.services.korean_law_service import check_missing_clauses as check_missing
+
+    missing = check_missing(request.contract_type, request.clauses)
+    return {
+        "contract_type": request.contract_type,
+        "missing_clauses": missing,
+        "missing_count": len(missing)
+    }
+
+
+# ==========================================
+# 협업 API
+# ==========================================
+
+@router.post("/collaboration/share")
+async def create_share(request: CreateShareRequest):
+    """분석 결과 공유 생성"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    # TODO: 실제 인증 시스템에서 사용자 정보 가져오기
+    owner_id = "user_" + str(hash(str(request.analysis_data)))[:8]
+    owner_name = "사용자"
+
+    try:
+        shared = service.create_shared_analysis(
+            analysis_data=request.analysis_data,
+            owner_id=owner_id,
+            owner_name=owner_name,
+            title=request.title,
+            expires_in_days=request.expires_in_days
+        )
+        return shared.to_dict()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"공유 생성 중 오류가 발생했습니다: {str(e)}"
+        )
+
+
+@router.get("/collaboration/share/{share_id}")
+async def get_share(share_id: str):
+    """공유된 분석 조회"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    shared = service.get_shared_analysis(share_id)
+
+    if not shared:
+        raise HTTPException(status_code=404, detail="공유된 분석을 찾을 수 없습니다.")
+
+    return shared.to_dict()
+
+
+@router.post("/collaboration/collaborator")
+async def add_collaborator(request: AddCollaboratorRequest):
+    """협업자 추가"""
+    from app.services.collaboration_service import (
+        get_collaboration_service,
+        SharePermission
+    )
+
+    service = get_collaboration_service()
+    # TODO: 실제 인증에서 요청자 ID 가져오기
+    added_by = "admin"
+
+    permission_map = {
+        "view": SharePermission.VIEW,
+        "comment": SharePermission.COMMENT,
+        "edit": SharePermission.EDIT,
+        "admin": SharePermission.ADMIN,
+    }
+
+    permission = permission_map.get(request.permission, SharePermission.VIEW)
+
+    success = service.add_collaborator(
+        share_id=request.share_id,
+        user_id=request.user_id,
+        user_name=request.user_name,
+        user_email=request.user_email,
+        permission=permission,
+        added_by=added_by
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail="협업자 추가에 실패했습니다.")
+
+    return {"success": True, "message": "협업자가 추가되었습니다."}
+
+
+@router.post("/collaboration/comment")
+async def add_comment(request: AddCommentRequest):
+    """코멘트 추가"""
+    from app.services.collaboration_service import (
+        get_collaboration_service,
+        CommentType
+    )
+
+    service = get_collaboration_service()
+    # TODO: 실제 인증에서 사용자 정보 가져오기
+    author_id = "user_001"
+    author_name = "리뷰어"
+
+    type_map = {
+        "general": CommentType.GENERAL,
+        "suggestion": CommentType.SUGGESTION,
+        "question": CommentType.QUESTION,
+        "approval": CommentType.APPROVAL,
+        "rejection": CommentType.REJECTION,
+    }
+
+    comment = service.add_comment(
+        share_id=request.share_id,
+        clause_number=request.clause_number,
+        author_id=author_id,
+        author_name=author_name,
+        content=request.content,
+        comment_type=type_map.get(request.comment_type, CommentType.GENERAL),
+        parent_id=request.parent_id,
+        mentions=request.mentions
+    )
+
+    if not comment:
+        raise HTTPException(status_code=400, detail="코멘트 추가에 실패했습니다.")
+
+    return comment.to_dict()
+
+
+@router.post("/collaboration/comment/resolve")
+async def resolve_comment(request: ResolveCommentRequest):
+    """코멘트 해결 처리"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    # TODO: 실제 인증에서 사용자 ID 가져오기
+    resolved_by = "user_001"
+
+    success = service.resolve_comment(
+        share_id=request.share_id,
+        comment_id=request.comment_id,
+        resolved_by=resolved_by
+    )
+
+    if not success:
+        raise HTTPException(status_code=400, detail="코멘트 해결 처리에 실패했습니다.")
+
+    return {"success": True, "message": "코멘트가 해결되었습니다."}
+
+
+@router.get("/collaboration/comments/{share_id}/{clause_number}")
+async def get_comments(share_id: str, clause_number: int):
+    """특정 조항의 코멘트 조회"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    comments = service.get_comments_by_clause(share_id, clause_number)
+
+    return {
+        "share_id": share_id,
+        "clause_number": clause_number,
+        "comments": [c.to_dict() for c in comments],
+        "count": len(comments)
+    }
+
+
+@router.post("/collaboration/version")
+async def create_version(request: CreateVersionRequest):
+    """새 버전 생성"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    # TODO: 실제 인증에서 사용자 ID 가져오기
+    created_by = "user_001"
+
+    version = service.create_new_version(
+        share_id=request.share_id,
+        analysis_data=request.analysis_data,
+        created_by=created_by,
+        description=request.description,
+        changes=request.changes
+    )
+
+    if not version:
+        raise HTTPException(status_code=400, detail="버전 생성에 실패했습니다.")
+
+    return version.to_dict()
+
+
+@router.get("/collaboration/version/{share_id}/{version_number}")
+async def get_version(share_id: str, version_number: int):
+    """특정 버전 조회"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    version = service.get_version(share_id, version_number)
+
+    if not version:
+        raise HTTPException(status_code=404, detail="버전을 찾을 수 없습니다.")
+
+    return version.to_dict()
+
+
+@router.get("/collaboration/diff/{share_id}/{v1}/{v2}")
+async def get_version_diff(share_id: str, v1: int, v2: int):
+    """두 버전 비교"""
+    from app.services.collaboration_service import get_collaboration_service
+
+    service = get_collaboration_service()
+    diff = service.get_version_diff(share_id, v1, v2)
+
+    if not diff:
+        raise HTTPException(status_code=404, detail="버전을 찾을 수 없습니다.")
+
+    return diff
+
+
+@router.post("/collaboration/share-link")
+async def generate_share_link(request: ShareLinkRequest):
+    """공유 링크 생성"""
+    from app.services.collaboration_service import (
+        get_collaboration_service,
+        SharePermission
+    )
+
+    service = get_collaboration_service()
+
+    permission_map = {
+        "view": SharePermission.VIEW,
+        "comment": SharePermission.COMMENT,
+        "edit": SharePermission.EDIT,
+    }
+
+    permission = permission_map.get(request.permission, SharePermission.VIEW)
+
+    link_data = service.generate_share_link(
+        share_id=request.share_id,
+        permission=permission,
+        expires_in_hours=request.expires_in_hours
+    )
+
+    if not link_data:
+        raise HTTPException(status_code=404, detail="공유를 찾을 수 없습니다.")
+
+    return link_data

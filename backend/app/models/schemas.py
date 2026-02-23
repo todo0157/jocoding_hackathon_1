@@ -36,6 +36,7 @@ class ContractAnalysisResponse(BaseModel):
     overall_risk_level: str
     clauses: list[AnalyzedClause]
     summary: str
+    disclaimer: Optional[str] = None  # 면책 조항
 
 
 class HealthResponse(BaseModel):
@@ -116,3 +117,67 @@ class ExpertConnectRequest(BaseModel):
     preferred_time: str  # morning, afternoon, evening, anytime
     consultation_summary: Optional[str] = None
     agree_privacy: bool = True
+
+
+# 협업 관련 스키마
+class CreateShareRequest(BaseModel):
+    analysis_data: dict
+    title: Optional[str] = None
+    expires_in_days: Optional[int] = None
+
+
+class AddCollaboratorRequest(BaseModel):
+    share_id: str
+    user_id: str
+    user_name: str
+    user_email: str
+    permission: str = "view"  # view, comment, edit, admin
+
+
+class AddCommentRequest(BaseModel):
+    share_id: str
+    clause_number: int
+    content: str
+    comment_type: str = "general"  # general, suggestion, question, approval, rejection
+    parent_id: Optional[str] = None
+    mentions: Optional[list[str]] = None
+
+
+class ResolveCommentRequest(BaseModel):
+    share_id: str
+    comment_id: str
+
+
+class CreateVersionRequest(BaseModel):
+    share_id: str
+    analysis_data: dict
+    description: str
+    changes: list[str]
+
+
+class ShareLinkRequest(BaseModel):
+    share_id: str
+    permission: str = "view"
+    expires_in_hours: int = 24
+
+
+class UpdatePermissionRequest(BaseModel):
+    share_id: str
+    user_id: str
+    new_permission: str
+
+
+class RemoveCollaboratorRequest(BaseModel):
+    share_id: str
+    user_id: str
+
+
+# 법령 조회 관련 스키마
+class LawSearchRequest(BaseModel):
+    clause_text: str
+    contract_type: str
+
+
+class ChecklistRequest(BaseModel):
+    contract_type: str
+    clauses: list[dict]
