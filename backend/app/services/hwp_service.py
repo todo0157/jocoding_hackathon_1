@@ -3,6 +3,7 @@ HWP 파일 처리 서비스
 한국 시장 진입을 위한 한글 문서(.hwp, .hwpx) 지원
 """
 import re
+import zlib
 import zipfile
 import xml.etree.ElementTree as ET
 from io import BytesIO
@@ -93,6 +94,14 @@ def _extract_from_hwp5(file_bytes: bytes) -> str:
     try:
         ole = olefile.OleFileIO(BytesIO(file_bytes))
 
+        # 압축 여부 확인
+        is_compressed = False
+        if ole.exists('FileHeader'):
+            header = ole.openstream('FileHeader').read()
+            if len(header) > 36:
+                flags = header[36]
+                is_compressed = (flags & 0x01) != 0
+
         # HWP5 본문 스트림 찾기
         text_parts = []
 
@@ -102,6 +111,13 @@ def _extract_from_hwp5(file_bytes: bytes) -> str:
             while ole.exists(f'BodyText/Section{section_idx}'):
                 stream = ole.openstream(f'BodyText/Section{section_idx}')
                 data = stream.read()
+
+                # 압축된 경우 해제
+                if is_compressed:
+                    try:
+                        data = zlib.decompress(data, -15)
+                    except zlib.error:
+                        pass  # 이미 압축 해제되어 있거나 다른 형식
 
                 # HWP5 텍스트 디코딩
                 text = _decode_hwp5_section(data)
